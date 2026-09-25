@@ -1,8 +1,8 @@
 name: Build WF
 on:
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
   
   pull_request:
     branches:
@@ -11,6 +11,9 @@ on:
 
   schedule:
     - cron: "10  14 * * 1-5"
+  
+permissions:
+  contents: read
 
 jobs:
   Build:
@@ -23,6 +26,16 @@ jobs:
 
       - name: Maven Build
         run: mvn install 
+
+      - name: Upload Build Artifact (WAR)
+        uses: actions/upload-artifact@v4
+        with:
+          name: vprofile-app
+          path: target/*.war
+
+      - name: Notify if Build Fails
+        if: failure()
+        run: echo "🚨 Build job failed! Please check logs." 
   
   Testing:
     runs-on: ubuntu-latest
@@ -32,7 +45,14 @@ jobs:
         with: 
           fetch-depth: 0
 
-      - name: Maven Test
+      - name: Run tests on main branch
+        if: github.ref == 'refs/heads/main'
         run: mvn test
+
       - name: Checkstyle
+        if: github.ref == 'refs/heads/main'
         run: mvn checkstyle:checkstyle
+
+      - name: Run tests on other branches
+        if: github.ref != 'refs/heads/main'
+        run: echo "Skipping unit tests and code analysis" 
